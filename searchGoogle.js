@@ -1,27 +1,33 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
 const { performance } = require('perf_hooks');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
+
+const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker');
+puppeteer.use(AdblockerPlugin({blockTrackers: true}));
 
 const searchGoogle = async (searchQuery) => {
-  // const browser = await puppeteer.launch({headless: false}); // headless: false to see the browser
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({headless: true});
 
   const page = await browser.newPage();
-  await page.goto('https://www.google.com');
 
-  // Find input element with name 'q' and type in searchQuery
-  await page.type('input[name="q"]', searchQuery);
+  // Avoid requests for images and stylesheets
+  // await page.setRequestInterception(true);
+  // page.on('request', request => {
+  //   if (request.resourceType() === 'image' || request.resourceType() === 'stylesheet') {
+  //     request.abort();
+  //   } else {
+  //     request.continue();
+  //   }
+  // });
 
-  // Click Enter to submit the form
-  // await page.keyboard.press('Enter');
-  
-  // Find the first input with name 'btnK' and use the click DOM Event Method to click it
-  await page.$eval('input[name="btnK"]', button => button.click());
-  
-  // Wait for the div with id 'search' to be visible
-  // await page.waitForSelector('#search');
-  await page.waitForSelector('div[id="search"]');
+  await page.goto('https://www.google.com/search?q='+searchQuery);
+
+  // Wait for the dev with id 'search' to load
+  await page.waitForSelector('div[id=search]');
 
   // Get and loop through each div with class 'g'
+  // To-do: update to include Youtube results
   const searchResults = await page.$$eval('div[class="g"]', divs => {
     const results = [];
     divs.forEach(div => {
@@ -34,10 +40,6 @@ const searchGoogle = async (searchQuery) => {
     });
     return results;
   });
-
-  // console.dir(searchResults);
-
-  // await page.screenshot({ path: 'q-search-query-check.png' });
   
   await browser.close();
 
@@ -60,9 +62,6 @@ const averageTime = async () => {
 
   console.log(`Average time: ${averageTime}ms`);
 };
-
-// averageTime();  // Average time: 1971.284685051441ms (1.97s)
-// searchGoogle('save my succulent'); // Test the searchGoogle function
 
 // Export the searchGoogle function so it can be used in server.js
 module.exports = searchGoogle;
